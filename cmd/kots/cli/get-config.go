@@ -38,6 +38,8 @@ func GetConfigCmd() *cobra.Command {
 	cmd.Flags().Int("sequence", -1, "app sequence to retrieve config for")
 	cmd.Flags().String("appslug", "", "app slug to retrieve config for")
 	cmd.Flags().Bool("decrypt", false, "decrypt encrypted config items")
+	cmd.Flags().Bool("local-development", false, "disable encryption check for local development")
+	cmd.Flags().MarkHidden("local-development")
 
 	return cmd
 }
@@ -64,6 +66,8 @@ func getConfigCmd(cmd *cobra.Command, args []string) error {
 	if appSlug == "" {
 		return errors.New("appslug is required")
 	}
+
+	localDevelopment := v.GetBool("local-development")
 
 	appSequence := v.GetInt("sequence")
 	if appSequence == -1 {
@@ -107,9 +111,11 @@ func getConfigCmd(cmd *cobra.Command, args []string) error {
 		return errors.Wrap(err, "failed to get config")
 	}
 
-	config.ConfigGroups, err = decryptGroups(clientset, namespace, config.ConfigGroups)
-	if err != nil {
-		return errors.Wrap(err, "failed to decrypt config")
+	if !localDevelopment {
+		config.ConfigGroups, err = decryptGroups(clientset, namespace, config.ConfigGroups)
+		if err != nil {
+			return errors.Wrap(err, "failed to decrypt config")
+		}
 	}
 
 	values := configGroupToValues(config.ConfigGroups)
